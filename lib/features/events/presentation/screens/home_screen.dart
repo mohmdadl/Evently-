@@ -7,6 +7,7 @@ import 'package:enevtly/core/utils/date_formatter.dart';
 import 'package:enevtly/features/auth/presentation/providers/auth_provider.dart';
 import 'package:enevtly/features/events/domain/entities/event_entity.dart';
 import 'package:enevtly/features/events/presentation/providers/events_provider.dart';
+import 'package:enevtly/features/events/presentation/widgets/rsvp_button.dart';
 
 /// Home Screen - Main events listing
 class HomeScreen extends StatefulWidget {
@@ -214,7 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   const SizedBox(height: 12),
                   
-                  // Attendees Count
+                  // Attendees Count and RSVP
                   Row(
                     children: [
                       Icon(
@@ -228,12 +229,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: const TextStyle(fontWeight: FontWeight.w500),
                       ),
                       const Spacer(),
-                      if (event.isUserAttending(authProvider.currentUser?.id ?? ''))
-                        Chip(
-                          label: const Text('Registered'),
-                          backgroundColor: ColorsManager.primaryColor,
-                          labelStyle: const TextStyle(color: Colors.white),
-                        ),
+                      RsvpButton(event: event, isCompact: true),
                     ],
                   ),
                 ],

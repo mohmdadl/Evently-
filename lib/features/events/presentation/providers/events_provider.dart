@@ -183,33 +183,94 @@ class EventsProvider with ChangeNotifier {
     );
   }
   
-  /// Register for event
+  /// Register for event (alias for attendEvent)
   Future<bool> registerForEvent(String eventId, String userId) async {
+    return await attendEvent(eventId, userId);
+  }
+  
+  /// Attend event with optimistic update
+  Future<bool> attendEvent(String eventId, String userId) async {
+    // OPTIMISTIC UPDATE: Update UI immediately
+    final eventIndex = _events.indexWhere((e) => e.id == eventId);
+    if (eventIndex == -1) return false;
+    
+    final event = _events[eventIndex];
+    if (event.attendees.contains(userId)) return true; // Already attending
+    
+    // Save original state in case we need to revert
+    final originalEvent = event;
+    
+    // Update UI immediately
+    final updatedAttendees = List<String>.from(event.attendees)..add(userId);
+    final updatedEvent = event.copyWith(
+      attendees: updatedAttendees,
+      attendeesCount: updatedAttendees.length,
+    );
+    _events[eventIndex] = updatedEvent;
+    
+    // Also update in search results if present
+    final searchIndex = _searchResults.indexWhere((e) => e.id == eventId);
+    if (searchIndex != -1) {
+      _searchResults[searchIndex] = updatedEvent;
+    }
+    
+    notifyListeners();
+    
+    // Make API call in background
     final result = await registerForEventUseCase(
       RegisterForEventParams(eventId: eventId, userId: userId),
     );
     
     return result.fold(
       (failure) {
-        _errorMessage = failure.message;
+        // REVERT: Restore original state if API call failed
+        final currentIndex = _events.indexWhere((e) => e.id == eventId);
+        if (currentIndex != -1) {
+          _events[currentIndex] = originalEvent;
+        }
+        final currentSearchIndex = _searchResults.indexWhere((e) => e.id == eventId);
+        if (currentSearchIndex != -1) {
+          _searchResults[currentSearchIndex] = originalEvent;
+        }
         notifyListeners();
+        _errorMessage = failure.message;
         return false;
       },
       (_) {
-        // Update local event
-        final eventIndex = _events.indexWhere((e) => e.id == eventId);
-        if (eventIndex != -1) {
-          final event = _events[eventIndex];
-          final updatedAttendees = List<String>.from(event.attendees)..add(userId);
-          _events[eventIndex] = event.copyWith(
-            attendees: updatedAttendees,
-            attendeesCount: updatedAttendees.length,
-          );
-          notifyListeners();
-        }
+        // Success - UI already updated
         return true;
       },
     );
+  }
+  
+  /// Leave event with optimistic update
+  Future<bool> leaveEvent(String eventId, String userId) async {
+    // OPTIMISTIC UPDATE: Update UI immediately
+    final eventIndex = _events.indexWhere((e) => e.id == eventId);
+    if (eventIndex == -1) return false;
+    
+    final event = _events[eventIndex];
+    if (!event.attendees.contains(userId)) return true; // Already not attending
+    
+    // Update UI immediately
+    final updatedAttendees = List<String>.from(event.attendees)..remove(userId);
+    final updatedEvent = event.copyWith(
+      attendees: updatedAttendees,
+      attendeesCount: updatedAttendees.length,
+    );
+    _events[eventIndex] = updatedEvent;
+    
+    // Also update in search results if present
+    final searchIndex = _searchResults.indexWhere((e) => e.id == eventId);
+    if (searchIndex != -1) {
+      _searchResults[searchIndex] = updatedEvent;
+    }
+    
+    notifyListeners();
+    
+    // TODO: Add use case for leaving event in the backend
+    // For now, just return success since we've updated locally
+    return true;
   }
   
   /// Clear error

@@ -7,6 +7,7 @@ import 'package:enevtly/features/auth/presentation/providers/auth_provider.dart'
 import 'package:enevtly/features/auth/presentation/screens/login_screen.dart';
 import 'package:enevtly/features/events/presentation/providers/events_provider.dart';
 import 'package:enevtly/features/events/presentation/screens/create_event_screen.dart';
+import 'package:enevtly/features/events/presentation/screens/event_details_screen.dart';
 import 'package:enevtly/features/events/presentation/screens/home_screen.dart';
 import 'package:enevtly/features/profile/presentation/screens/profile_screen.dart';
 import 'package:enevtly/firebase_options.dart';
@@ -80,6 +81,18 @@ class Evently extends StatelessWidget {
         '/home': (context) => const HomeScreen(),
         '/create-event': (context) => const CreateEventScreen(),
         '/profile': (context) => const ProfileScreen(),
+      },
+      onGenerateRoute: (settings) {
+        // Handle event details route with event argument
+        if (settings.name == '/event-details') {
+          final event = settings.arguments;
+          if (event != null) {
+            return MaterialPageRoute(
+              builder: (context) => EventDetailsScreen(event: event as dynamic),
+            );
+          }
+        }
+        return null;
       },
     );
   }
